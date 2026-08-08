@@ -1,8 +1,18 @@
 # rusty_av2f
 
 A still-image container for **AV2**, in the shape AVIF uses for AV1: one coded
-picture stored as an item in an ISOBMFF/HEIF file. Pure Rust, no unsafe, no
+picture stored as an item in an ISOBMFF/HEIF file. Pure Rust, no `unsafe`, no
 dependencies.
+
+[![crates.io](https://img.shields.io/crates/v/rusty_av2f.svg)](https://crates.io/crates/rusty_av2f)
+[![docs.rs](https://docs.rs/rusty_av2f/badge.svg)](https://docs.rs/rusty_av2f)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> **⚠️ Not an AOM standard, and not interoperable.** AV2F's four-character codes
+> are *chosen by this crate*, not specified by anyone. Files it writes are
+> readable by it and by nothing else. Read
+> [the next section](#read-this-before-you-use-it) before producing files you
+> intend to keep.
 
 ```rust
 use rusty_av2f::{encode, decode, Params, Config};
@@ -109,9 +119,16 @@ The parser is written to fail rather than guess, and is tested that way:
 
 ## Status
 
-Experimental, and deliberately **unpublished on crates.io** — claiming the name
-`rusty_av2f` while the format is provisional would be squatting a name that a
-real specification might deserve. Depend on it by path, or vendor it.
+**Experimental — 0.x, and the format is provisional.** Published so it can be
+depended on normally, not because the codes are settled. Treat a version bump as
+potentially format-breaking until an AOM specification exists; if one appears and
+says something different, this crate follows it and older files stop being
+readable.
+
+```toml
+[dependencies]
+rusty_av2f = "0.1"
+```
 
 ## Related
 
