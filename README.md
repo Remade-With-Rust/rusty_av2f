@@ -86,26 +86,24 @@ Sniff a file without parsing it, in the shape format probes conventionally use
 if rusty_av2f::probe(&bytes) == 100 { /* it's ours */ }
 ```
 
-## Payload restriction: full still-picture header only
+## Header forms: both supported
 
 AV2 can code a still picture two ways: with the ordinary frame headers, or with
 the compact form signalled by `single_picture_header_flag` (AV2's rename of AV1's
 `reduced_still_picture_header`). The compact form is the natural choice for an
-image format — it is what AVIF uses.
+image format — it is what AVIF uses — and **both forms encode and decode here**.
 
-**This crate writes and reads only the full-header form**, and `encode` refuses a
-`Config` that claims otherwise. The reason is specific and temporary:
-[`rusty_av2d`](https://crates.io/crates/rusty_av2d), the decoder these files are
-meant for, does not yet parse the compact header bit-exactly and refuses it
-outright. Writing the compact form would mint files our own decoder rejects, so
-the restriction lives at the writer rather than being discovered at the reader.
-It lifts when that parse lands.
+(Versions before 0.2.0 accepted only the full form because
+[`rusty_av2d`](https://crates.io/crates/rusty_av2d) could not yet decode the
+compact one bit-exactly. That landed in `rusty_av2d` 0.2.5, verified
+byte-identical against AOM's reference decoder, and the restriction is gone —
+`Config::full_still_picture_header` is now informational.)
 
-Produce a suitable payload with AOM's reference encoder:
+Produce a payload with AOM's reference encoder — either form:
 
 ```sh
-avmenc --codec=av2 --limit=1 --ivf --full-still-picture-hdr \
-       --end-usage=q --qp=140 -o still.ivf source.y4m
+avmenc --codec=av2 --limit=1 --ivf --end-usage=q --qp=140 -o still.ivf source.y4m
+# add --full-still-picture-hdr for the full-header form
 ```
 
 and hand `encode` the IVF frame's payload.

@@ -17,18 +17,13 @@
 //! They are useful for pipeline work, for measuring AV2 against AVIF on still
 //! images, and for having the container ready the day a specification lands.
 //!
-//! ## Payload restriction, and why
+//! ## Header forms
 //!
-//! [`encode`] requires an AV2 still picture coded with the **full**
-//! still-picture header (`avmenc --full-still-picture-hdr`, i.e.
-//! `single_picture_header_flag = 0`).
-//!
-//! The compact alternative is what a still-image format would naturally use,
-//! but `rusty_av2d` does not yet decode it bit-exactly and currently refuses
-//! it, so writing such a payload would produce a file our own decoder rejects.
-//! Encoding the full-header form sidesteps that entirely and is byte-identical
-//! against the reference decoder today. When the compact form lands, relax the
-//! check in [`encode`] and set [`Config::full_still_picture_header`] to false.
+//! Both AV2 still-picture header forms are supported: the full form and the
+//! compact `single_picture_header_flag` form — the natural choice for an image
+//! format, and what AVIF does for AV1. (Early versions accepted only the full
+//! form because `rusty_av2d` could not yet decode the compact one bit-exactly;
+//! that landed in `rusty_av2d` 0.2.5 and the restriction is gone.)
 //!
 //! ## Example
 //!
@@ -128,22 +123,17 @@ pub fn probe(data: &[u8]) -> i32 {
 
 /// Package an AV2 still picture as an AV2F file.
 ///
-/// `payload` must be the AV2 bitstream for a single still picture coded with
-/// the full still-picture header — see the crate docs for why.
+/// Both AV2 still-picture header forms are accepted: the full form and the
+/// compact `single_picture_header_flag` form (the one an image format naturally
+/// uses — it is what AVIF does for AV1). The historical full-header-only
+/// restriction was lifted once `rusty_av2d` 0.2.5 decoded the compact form
+/// byte-identically to the reference.
 pub fn encode(params: &Params, payload: &[u8]) -> Result<Vec<u8>, Error> {
     if params.width == 0 || params.height == 0 {
         return Err(Error::Invalid("image dimensions are zero"));
     }
     if payload.is_empty() {
         return Err(Error::Invalid("payload is empty"));
-    }
-    if !params.config.full_still_picture_header {
-        return Err(Error::Unsupported(
-            "compact still-picture header: rusty_av2d does not decode it bit-exactly yet, \
-             so writing it would produce a file our own decoder refuses. Encode with \
-             `avmenc --full-still-picture-hdr`."
-                .into(),
-        ));
     }
 
     // --- iprp: ispe, av2C, pixi, and the association tying them to item 1 ---
@@ -225,13 +215,8 @@ pub fn decode(data: &[u8]) -> Result<Image<'_>, Error> {
     let config = Config::from_body(cfg_box.body).ok_or_else(|| {
         Error::Unsupported("av2C record was not written by this crate".into())
     })?;
-    if !config.full_still_picture_header {
-        return Err(Error::Unsupported(
-            "payload uses the compact still-picture header, which rusty_av2d does not yet \
-             decode bit-exactly"
-                .into(),
-        ));
-    }
+    // Both header forms decode (the full-header-only restriction was lifted with
+    // rusty_av2d 0.2.5); `config.full_still_picture_header` is informational.
 
     // iloc gives the payload's absolute offset and length.
     let iloc = find(&meta_children, b"iloc").ok_or(Error::Malformed("no iloc box"))?;
@@ -407,16 +392,23 @@ mod tests {
     }
 
     #[test]
-    fn rejects_the_compact_still_picture_header() {
-        let cfg = Config {
-            full_still_picture_header: false,
-            ..Config::default()
-        };
-        let p = Params {
-            config: cfg,
-            ..params()
-        };
-        assert!(matches!(encode(&p, &[1, 2, 3]), Err(Error::Unsupported(_))));
+    fn accepts_both_still_picture_header_forms() {
+        // The compact `single_picture_header_flag` form round-trips too — the
+        // full-header-only restriction was lifted with rusty_av2d 0.2.5.
+        for full in [true, false] {
+            let cfg = Config {
+                full_still_picture_header: full,
+                ..Config::default()
+            };
+            let p = Params {
+                config: cfg,
+                ..params()
+            };
+            let file = encode(&p, &[1, 2, 3]).expect("both header forms encode");
+            let img = decode(&file).expect("both header forms decode");
+            assert_eq!(img.payload, &[1, 2, 3]);
+            assert_eq!(img.config.full_still_picture_header, full);
+        }
     }
 
     #[test]

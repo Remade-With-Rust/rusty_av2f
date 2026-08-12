@@ -61,10 +61,10 @@ pub struct Config {
     pub bit_depth: u8,
     pub subsampling: Subsampling,
     /// True when the payload uses AV2's **full** still-picture header
-    /// (`single_picture_header_flag = 0`).
+    /// (`single_picture_header_flag = 0`); false for the compact form.
     ///
-    /// This crate only writes `true`, and refuses to read `false` — see
-    /// [`crate::encode`] for why that restriction exists and when it lifts.
+    /// Informational — both forms encode and decode. (The historical
+    /// full-only restriction was lifted with `rusty_av2d` 0.2.5.)
     pub full_still_picture_header: bool,
 }
 
