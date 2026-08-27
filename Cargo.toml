@@ -16,4 +16,4 @@ categories = ["multimedia::images", "multimedia"]
 
 [dev-dependencies]
 # global allocator for bench/example roots (project convention)
-rusty_alloc-api = "0.4"
+rusty_alloc-api = "=1.1.4"
