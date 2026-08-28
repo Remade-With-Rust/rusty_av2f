@@ -1,6 +1,6 @@
 [package]
 name = "rusty_av2f"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 # 1.82 for `Option::is_none_or`, used by the box walker's bounds check.
 rust-version = "1.82"
